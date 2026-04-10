@@ -1,0 +1,733 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>CareerAI — Seu Assistente de Carreira em IA</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;1,9..40,300&display=swap');
+
+  :root {
+    --bg: #0a0a0f;
+    --surface: #111118;
+    --surface2: #18181f;
+    --border: rgba(255,255,255,0.07);
+    --border-hover: rgba(255,255,255,0.15);
+    --accent: #7c6af7;
+    --accent2: #a78bfa;
+    --text: #f0effe;
+    --text-muted: #8b8aa0;
+    --text-dim: #4f4e62;
+    --user-bubble: #1e1b3a;
+    --success: #34d399;
+    --tag-bg: rgba(124, 106, 247, 0.12);
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    font-family: 'DM Sans', sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    height: 100vh;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+  }
+
+  header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 14px 24px;
+    border-bottom: 1px solid var(--border);
+    background: rgba(10,10,15,0.95);
+    backdrop-filter: blur(12px);
+    position: relative;
+    z-index: 10;
+    flex-shrink: 0;
+  }
+
+  .logo {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+
+  .logo-icon {
+    width: 34px;
+    height: 34px;
+    background: linear-gradient(135deg, var(--accent), #c084fc);
+    border-radius: 10px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 16px;
+    flex-shrink: 0;
+  }
+
+  .logo-text {
+    font-family: 'Syne', sans-serif;
+    font-size: 18px;
+    font-weight: 700;
+    letter-spacing: -0.3px;
+  }
+
+  .logo-text span { color: var(--accent2); }
+
+  .header-meta {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 12px;
+    color: var(--text-muted);
+  }
+
+  .status-dot {
+    width: 7px;
+    height: 7px;
+    background: var(--success);
+    border-radius: 50%;
+    animation: pulse 2s infinite;
+  }
+
+  @keyframes pulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.4; }
+  }
+
+  .model-badge {
+    background: var(--tag-bg);
+    border: 1px solid rgba(124, 106, 247, 0.2);
+    color: var(--accent2);
+    padding: 3px 8px;
+    border-radius: 20px;
+    font-size: 11px;
+    font-weight: 500;
+  }
+
+  .layout {
+    display: flex;
+    flex: 1;
+    overflow: hidden;
+  }
+
+  .sidebar {
+    width: 240px;
+    border-right: 1px solid var(--border);
+    background: var(--surface);
+    display: flex;
+    flex-direction: column;
+    padding: 20px 16px;
+    flex-shrink: 0;
+    gap: 24px;
+    overflow-y: auto;
+  }
+
+  @media (max-width: 680px) { .sidebar { display: none; } }
+
+  .sidebar-section-title {
+    font-size: 10px;
+    font-weight: 600;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--text-dim);
+    margin-bottom: 8px;
+  }
+
+  .topic-btn {
+    display: flex;
+    align-items: flex-start;
+    gap: 10px;
+    width: 100%;
+    background: none;
+    border: 1px solid transparent;
+    border-radius: 10px;
+    padding: 10px;
+    text-align: left;
+    cursor: pointer;
+    transition: all 0.15s;
+    color: var(--text-muted);
+    font-family: 'DM Sans', sans-serif;
+    font-size: 13px;
+    line-height: 1.35;
+    margin-bottom: 4px;
+  }
+
+  .topic-btn:hover {
+    background: var(--surface2);
+    border-color: var(--border);
+    color: var(--text);
+  }
+
+  .topic-icon { font-size: 14px; margin-top: 1px; flex-shrink: 0; }
+
+  .sidebar-divider { border: none; border-top: 1px solid var(--border); }
+
+  .api-note {
+    font-size: 11px;
+    color: var(--text-dim);
+    line-height: 1.5;
+    padding: 10px;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    background: rgba(255,255,255,0.02);
+  }
+
+  .api-note strong { color: var(--accent2); font-weight: 500; }
+
+  .chat-container {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+  }
+
+  .messages {
+    flex: 1;
+    overflow-y: auto;
+    padding: 28px 0;
+    scroll-behavior: smooth;
+  }
+
+  .messages::-webkit-scrollbar { width: 4px; }
+  .messages::-webkit-scrollbar-track { background: transparent; }
+  .messages::-webkit-scrollbar-thumb { background: var(--border-hover); border-radius: 4px; }
+
+  .message-row {
+    display: flex;
+    gap: 12px;
+    padding: 6px 24px;
+    max-width: 800px;
+    margin: 0 auto;
+    width: 100%;
+    animation: fadeUp 0.25s ease both;
+  }
+
+  @keyframes fadeUp {
+    from { opacity: 0; transform: translateY(8px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+
+  .avatar {
+    width: 30px;
+    height: 30px;
+    border-radius: 8px;
+    flex-shrink: 0;
+    margin-top: 2px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 13px;
+  }
+
+  .avatar.ai { background: linear-gradient(135deg, var(--accent), #c084fc); }
+  .avatar.user {
+    background: var(--surface2);
+    border: 1px solid var(--border-hover);
+    font-size: 12px;
+    color: var(--text-muted);
+  }
+
+  .bubble-wrap { flex: 1; min-width: 0; }
+
+  .sender-name {
+    font-size: 11px;
+    font-weight: 600;
+    color: var(--text-dim);
+    margin-bottom: 5px;
+    letter-spacing: 0.04em;
+  }
+
+  .bubble {
+    font-size: 14.5px;
+    line-height: 1.65;
+    color: var(--text);
+    max-width: 620px;
+  }
+
+  .bubble.user-bubble {
+    background: var(--user-bubble);
+    border: 1px solid rgba(124, 106, 247, 0.2);
+    border-radius: 4px 12px 12px 12px;
+    padding: 10px 14px;
+    display: inline-block;
+    color: #ddd8ff;
+  }
+
+  .bubble p { margin-bottom: 8px; }
+  .bubble p:last-child { margin-bottom: 0; }
+  .bubble strong { font-weight: 600; color: var(--accent2); }
+  .bubble em { font-style: italic; color: var(--text-muted); }
+  .bubble ul, .bubble ol { padding-left: 18px; margin: 6px 0; }
+  .bubble li { margin-bottom: 4px; }
+
+  .bubble code {
+    background: rgba(124, 106, 247, 0.1);
+    border: 1px solid rgba(124, 106, 247, 0.2);
+    padding: 1px 5px;
+    border-radius: 4px;
+    font-family: 'Courier New', monospace;
+    font-size: 12.5px;
+    color: var(--accent2);
+  }
+
+  .bubble pre {
+    background: #0d0d14;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 12px 14px;
+    overflow-x: auto;
+    margin: 8px 0;
+    font-size: 12.5px;
+    line-height: 1.6;
+    color: #a8a0ff;
+    font-family: 'Courier New', monospace;
+  }
+
+  .bubble pre code { background: none; border: none; padding: 0; color: inherit; font-size: inherit; }
+
+  .typing-indicator { display: flex; align-items: center; gap: 4px; padding: 8px 0 2px; }
+
+  .typing-dot {
+    width: 6px; height: 6px;
+    background: var(--accent);
+    border-radius: 50%;
+    animation: bounce 1.2s infinite;
+    opacity: 0.7;
+  }
+
+  .typing-dot:nth-child(2) { animation-delay: 0.2s; }
+  .typing-dot:nth-child(3) { animation-delay: 0.4s; }
+
+  @keyframes bounce {
+    0%, 60%, 100% { transform: translateY(0); }
+    30% { transform: translateY(-5px); }
+  }
+
+  .welcome-area {
+    max-width: 800px;
+    margin: 0 auto;
+    padding: 0 24px;
+    width: 100%;
+  }
+
+  .welcome-title {
+    font-family: 'Syne', sans-serif;
+    font-size: 26px;
+    font-weight: 700;
+    margin-bottom: 8px;
+    background: linear-gradient(135deg, var(--text), var(--accent2));
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+  }
+
+  .welcome-sub {
+    font-size: 14px;
+    color: var(--text-muted);
+    margin-bottom: 24px;
+    line-height: 1.6;
+  }
+
+  .suggestions-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 10px;
+    margin-bottom: 28px;
+  }
+
+  @media (max-width: 480px) { .suggestions-grid { grid-template-columns: 1fr; } }
+
+  .suggestion-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 14px 16px;
+    cursor: pointer;
+    transition: all 0.2s;
+    text-align: left;
+    font-family: 'DM Sans', sans-serif;
+    color: var(--text-muted);
+    font-size: 13px;
+    line-height: 1.4;
+  }
+
+  .suggestion-card:hover {
+    background: var(--surface2);
+    border-color: rgba(124, 106, 247, 0.35);
+    color: var(--text);
+    transform: translateY(-1px);
+  }
+
+  .suggestion-label {
+    font-size: 10px;
+    font-weight: 600;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--accent);
+    margin-bottom: 5px;
+  }
+
+  .input-area {
+    border-top: 1px solid var(--border);
+    padding: 16px 24px 20px;
+    background: rgba(10,10,15,0.95);
+    backdrop-filter: blur(12px);
+    flex-shrink: 0;
+  }
+
+  .input-wrap {
+    max-width: 800px;
+    margin: 0 auto;
+    display: flex;
+    gap: 10px;
+    align-items: flex-end;
+  }
+
+  .input-box {
+    flex: 1;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 11px 16px;
+    font-family: 'DM Sans', sans-serif;
+    font-size: 14px;
+    color: var(--text);
+    outline: none;
+    resize: none;
+    min-height: 46px;
+    max-height: 140px;
+    line-height: 1.5;
+    transition: border-color 0.15s;
+  }
+
+  .input-box::placeholder { color: var(--text-dim); }
+  .input-box:focus { border-color: rgba(124, 106, 247, 0.4); }
+
+  .send-btn {
+    width: 46px; height: 46px;
+    background: var(--accent);
+    border: none;
+    border-radius: 12px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.15s;
+    flex-shrink: 0;
+  }
+
+  .send-btn:hover:not(:disabled) { background: var(--accent2); transform: scale(1.04); }
+  .send-btn:disabled { opacity: 0.4; cursor: default; }
+  .send-btn svg { width: 18px; height: 18px; fill: white; }
+
+  .input-hint {
+    text-align: center;
+    font-size: 11px;
+    color: var(--text-dim);
+    margin-top: 10px;
+  }
+
+  .toast {
+    position: fixed;
+    bottom: 24px;
+    right: 24px;
+    background: var(--surface2);
+    border: 1px solid var(--border-hover);
+    border-radius: 10px;
+    padding: 10px 16px;
+    font-size: 13px;
+    color: var(--text);
+    z-index: 200;
+    transform: translateY(80px);
+    opacity: 0;
+    transition: all 0.3s;
+    pointer-events: none;
+  }
+
+  .toast.show { transform: translateY(0); opacity: 1; }
+</style>
+</head>
+<body>
+
+<div class="toast" id="toast"></div>
+
+<header>
+  <div class="logo">
+    <div class="logo-icon">✦</div>
+    <div class="logo-text">Career<span>AI</span></div>
+  </div>
+  <div class="header-meta">
+    <div class="status-dot"></div>
+    <span>Online</span>
+    <div class="model-badge">Gemini 2.5 Flash</div>
+    <button onclick="clearChat()" style="background:none;border:1px solid var(--border);border-radius:6px;color:var(--text-muted);font-size:11px;padding:4px 8px;cursor:pointer;font-family:'DM Sans',sans-serif;transition:all 0.15s;" onmouseover="this.style.borderColor='var(--border-hover)';this.style.color='var(--text)'" onmouseout="this.style.borderColor='var(--border)';this.style.color='var(--text-muted)'">Limpar</button>
+  </div>
+</header>
+
+<div class="layout">
+
+  <aside class="sidebar">
+    <div>
+      <div class="sidebar-section-title">Tópicos</div>
+      <button class="topic-btn" onclick="sendQuick('O que é IA Generativa e como funciona?')">
+        <span class="topic-icon">🧠</span>O que é IA Generativa?
+      </button>
+      <button class="topic-btn" onclick="sendQuick('Como integrar a API do Gemini em um projeto Python do zero?')">
+        <span class="topic-icon">🐍</span>API Gemini + Python
+      </button>
+      <button class="topic-btn" onclick="sendQuick('O que é RAG (Retrieval Augmented Generation) e quando usar?')">
+        <span class="topic-icon">📚</span>Entender RAG
+      </button>
+      <button class="topic-btn" onclick="sendQuick('Quais são as melhores ferramentas no-code para criar chatbots em 2025?')">
+        <span class="topic-icon">🧩</span>No-code / Low-code
+      </button>
+      <button class="topic-btn" onclick="sendQuick('Como me tornar um desenvolvedor de IA em 2025? Monte um roadmap para mim.')">
+        <span class="topic-icon">🗺️</span>Roadmap de carreira em IA
+      </button>
+      <button class="topic-btn" onclick="sendQuick('Quais são os principais modelos de linguagem disponíveis hoje e como compará-los?')">
+        <span class="topic-icon">⚡</span>Comparar LLMs
+      </button>
+      <button class="topic-btn" onclick="sendQuick('Como fazer engenharia de prompts eficaz para obter melhores respostas de LLMs?')">
+        <span class="topic-icon">✍️</span>Prompt Engineering
+      </button>
+    </div>
+    <hr class="sidebar-divider">
+    <div class="api-note">
+      <strong>Powered by</strong> Google Gemini 2.5 Flash via backend seguro. A chave da API fica protegida no servidor.
+    </div>
+  </aside>
+
+  <div class="chat-container">
+    <div class="messages" id="messages">
+      <div class="welcome-area" id="welcomeArea">
+        <div style="padding-top: 20px; margin-bottom: 32px;">
+          <p class="welcome-title">Olá! Sou o CareerAI 👋</p>
+          <p class="welcome-sub">
+            Seu assistente especializado em <strong style="-webkit-text-fill-color:var(--accent2);font-weight:600">IA Generativa e carreira em tecnologia</strong>.<br>
+            Posso ajudar com dúvidas sobre LLMs, APIs, projetos práticos e muito mais.
+          </p>
+          <div class="suggestions-grid">
+            <button class="suggestion-card" onclick="sendQuick('Como integrar a API do Gemini em um projeto Python do zero?')">
+              <div class="suggestion-label">Tutorial</div>
+              Como integrar a API Gemini em Python
+            </button>
+            <button class="suggestion-card" onclick="sendQuick('Explique a diferença entre fine-tuning, RAG e prompt engineering de forma prática.')">
+              <div class="suggestion-label">Conceito</div>
+              Fine-tuning vs RAG vs Prompts
+            </button>
+            <button class="suggestion-card" onclick="sendQuick('Quais habilidades preciso para conseguir um emprego como engenheiro de IA em 2025?')">
+              <div class="suggestion-label">Carreira</div>
+              Habilidades para trabalhar com IA
+            </button>
+            <button class="suggestion-card" onclick="sendQuick('Me ajude a criar um projeto de chatbot com RAG usando Python e ChromaDB.')">
+              <div class="suggestion-label">Projeto</div>
+              Criar projeto de chatbot com RAG
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="input-area">
+      <div class="input-wrap">
+        <textarea
+          class="input-box"
+          id="userInput"
+          placeholder="Pergunte sobre IA Generativa, LLMs, APIs, carreira..."
+          rows="1"
+          onkeydown="handleKey(event)"
+          oninput="autoResize(this)"
+        ></textarea>
+        <button class="send-btn" id="sendBtn" onclick="sendMessage()">
+          <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+            <path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z"/>
+          </svg>
+        </button>
+      </div>
+      <div class="input-hint">
+        Pressione <kbd style="background:var(--surface2);border:1px solid var(--border);padding:1px 5px;border-radius:4px;font-size:10px">Enter</kbd> para enviar ·
+        <kbd style="background:var(--surface2);border:1px solid var(--border);padding:1px 5px;border-radius:4px;font-size:10px">Shift+Enter</kbd> para nova linha
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<script>
+const SYSTEM_PROMPT = `Você é CareerAI, um assistente especializado em IA Generativa e carreira em tecnologia.
+
+Seu foco principal é:
+- Ensinar conceitos de IA Generativa de forma clara e prática
+- Ajudar com integração de APIs de LLMs (Google Gemini, OpenAI, Anthropic, etc.)
+- Explicar técnicas como RAG, fine-tuning, prompt engineering
+- Orientar sobre carreira e habilidades em IA
+- Ajudar na criação de projetos práticos com IA
+- Comparar ferramentas e plataformas (n8n, LangChain, LlamaIndex, etc.)
+
+Diretrizes de resposta:
+- Seja direto, prático e use exemplos de código quando relevante
+- Formate código em blocos de código com a linguagem especificada
+- Responda em português do Brasil
+- Quando mostrar código, use boas práticas e adicione comentários explicativos
+- Limite respostas a 400 palavras quando possível, sendo conciso e preciso`;
+
+let conversationHistory = [];
+let isLoading = false;
+
+function showToast(msg) {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  setTimeout(() => t.classList.remove('show'), 3500);
+}
+
+function autoResize(el) {
+  el.style.height = 'auto';
+  el.style.height = Math.min(el.scrollHeight, 140) + 'px';
+}
+
+function handleKey(e) {
+  if (e.key === 'Enter' && !e.shiftKey) {
+    e.preventDefault();
+    sendMessage();
+  }
+}
+
+function sendQuick(text) {
+  document.getElementById('userInput').value = text;
+  sendMessage();
+}
+
+function clearChat() {
+  conversationHistory = [];
+  const msgs = document.getElementById('messages');
+  msgs.innerHTML = '';
+  const welcome = document.createElement('div');
+  welcome.className = 'welcome-area';
+  welcome.id = 'welcomeArea';
+  welcome.innerHTML = `<div style="padding-top:20px;margin-bottom:32px;">
+    <p class="welcome-title">Chat reiniciado ✦</p>
+    <p class="welcome-sub">Use os botões na barra lateral ou digite uma pergunta abaixo.</p>
+  </div>`;
+  msgs.appendChild(welcome);
+}
+
+function appendMessage(role, content) {
+  const welcomeArea = document.getElementById('welcomeArea');
+  if (welcomeArea) welcomeArea.remove();
+
+  const msgs = document.getElementById('messages');
+  const row = document.createElement('div');
+  row.className = 'message-row';
+
+  const isAI = role === 'assistant';
+  const avatarEl = `<div class="avatar ${isAI ? 'ai' : 'user'}">${isAI ? '✦' : '👤'}</div>`;
+  const senderName = isAI ? 'CareerAI' : 'Você';
+
+  const bubble = document.createElement('div');
+  bubble.className = `bubble ${isAI ? 'ai-bubble' : 'user-bubble'}`;
+  bubble.innerHTML = renderMarkdown(content);
+
+  row.innerHTML = avatarEl + `<div class="bubble-wrap"><div class="sender-name">${senderName}</div></div>`;
+  row.querySelector('.bubble-wrap').appendChild(bubble);
+  msgs.appendChild(row);
+  msgs.scrollTop = msgs.scrollHeight;
+}
+
+function renderMarkdown(text) {
+  return text
+    .replace(/```(\w*)\n?([\s\S]*?)```/g, (_, lang, code) =>
+      `<pre><code>${escHtml(code.trim())}</code></pre>`)
+    .replace(/`([^`]+)`/g, '<code>$1</code>')
+    .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
+    .replace(/\*(.+?)\*/g, '<em>$1</em>')
+    .replace(/^### (.+)$/gm, '<h3 style="font-size:15px;font-weight:600;margin:10px 0 4px;color:var(--accent2)">$1</h3>')
+    .replace(/^## (.+)$/gm, '<h2 style="font-size:17px;font-weight:600;margin:12px 0 6px;color:var(--text)">$1</h2>')
+    .replace(/^- (.+)$/gm, '<li style="margin-bottom:4px">$1</li>')
+    .replace(/(<li.*<\/li>)/s, '<ul>$1</ul>')
+    .replace(/\n\n/g, '</p><p>')
+    .replace(/\n/g, '<br>');
+}
+
+function escHtml(t) {
+  return t.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+}
+
+function showTyping() {
+  const msgs = document.getElementById('messages');
+  const row = document.createElement('div');
+  row.className = 'message-row';
+  row.id = 'typingRow';
+  row.innerHTML = `<div class="avatar ai">✦</div>
+  <div class="bubble-wrap">
+    <div class="sender-name">CareerAI</div>
+    <div class="typing-indicator">
+      <div class="typing-dot"></div>
+      <div class="typing-dot"></div>
+      <div class="typing-dot"></div>
+    </div>
+  </div>`;
+  msgs.appendChild(row);
+  msgs.scrollTop = msgs.scrollHeight;
+}
+
+function removeTyping() {
+  const t = document.getElementById('typingRow');
+  if (t) t.remove();
+}
+
+async function sendMessage() {
+  const input = document.getElementById('userInput');
+  const text = input.value.trim();
+  if (!text || isLoading) return;
+
+  input.value = '';
+  input.style.height = 'auto';
+  isLoading = true;
+  document.getElementById('sendBtn').disabled = true;
+
+  appendMessage('user', text);
+  showTyping();
+
+  try {
+    // Chama o backend seguro — a chave Gemini nunca fica no browser
+    const res = await fetch('/api/chat', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        message: text,
+        history: conversationHistory.map(m => ({
+          role: m.role === 'assistant' ? 'model' : 'user',
+          parts: [{ text: m.content }]
+        })),
+        systemPrompt: SYSTEM_PROMPT
+      })
+    });
+
+    const data = await res.json();
+
+    if (!res.ok || data.error) {
+      throw new Error(data.error || 'Erro desconhecido no servidor.');
+    }
+
+    removeTyping();
+    appendMessage('assistant', data.text);
+    conversationHistory.push({ role: 'user', content: text });
+    conversationHistory.push({ role: 'assistant', content: data.text });
+
+  } catch (err) {
+    removeTyping();
+    appendMessage('assistant', `⚠️ **Erro:** ${err.message}\n\nVerifique se o servidor está configurado corretamente.`);
+  }
+
+  isLoading = false;
+  document.getElementById('sendBtn').disabled = false;
+  document.getElementById('userInput').focus();
+}
+
+window.onload = () => document.getElementById('userInput').focus();
+</script>
+</body>
+</html>
