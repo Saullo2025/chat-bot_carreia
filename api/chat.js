@@ -9,16 +9,13 @@ export default async function handler(req, res) {
   }
 
   const { history, message, systemPrompt } = req.body;
-
   if (!message) {
     return res.status(400).json({ error: 'Mensagem não informada.' });
   }
 
-  // Ordem de fallback: tenta cada modelo até um funcionar
-  const MODELS = [
-    'gemini-2.5-flash',
-    'gemini-2.0-flash',
-  ];
+  const MODELS = ['gemini-2.5-flash', 'gemini-2.0-flash'];
+  const MAX_RETRIES = 3;
+  const RETRY_DELAY_MS = 1500;
 
   const contents = [
     ...(history || []),
@@ -34,43 +31,54 @@ export default async function handler(req, res) {
     body.system_instruction = { parts: [{ text: systemPrompt }] };
   }
 
-  let lastError = '';
+  const sleep = (ms) => new Promise(resolve => setTimeout(resolve, ms));
 
   for (const model of MODELS) {
-    try {
-      const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`;
+    for (let attempt = 1; attempt <= MAX_RETRIES; attempt++) {
+      try {
+        const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`;
 
-      const geminiRes = await fetch(url, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(body)
-      });
+        const geminiRes = await fetch(url, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(body)
+        });
 
-      const data = await geminiRes.json();
+        const data = await geminiRes.json();
 
-      // Se for erro de quota ou sobrecarga, tenta o próximo modelo
-      if (data.error) {
-        const code = data.error.code;
-        const msg  = data.error.message || '';
-        if (code === 429 || msg.includes('quota') || msg.includes('demand') || msg.includes('overloaded')) {
-          lastError = `${model}: ${msg}`;
-          continue; // tenta próximo modelo
+        if (data.error) {
+          const code = data.error.code;
+          const msg  = data.error.message || '';
+          const isOverloaded = code === 429 || msg.includes('quota') || msg.includes('demand') || msg.includes('overloaded');
+
+          if (isOverloaded) {
+            // Se ainda tem tentativas, aguarda e tenta de novo no mesmo modelo
+            if (attempt < MAX_RETRIES) {
+              await sleep(RETRY_DELAY_MS * attempt);
+              continue;
+            }
+            // Esgotou tentativas neste modelo, passa para o próximo
+            break;
+          }
+
+          // Erro diferente (chave inválida etc.) — não adianta tentar
+          return res.status(500).json({ error: data.error.message });
         }
-        // Erro diferente (ex: chave inválida) — não adianta tentar outros modelos
-        return res.status(500).json({ error: data.error.message });
+
+        const text = data.candidates?.[0]?.content?.parts?.[0]?.text || '';
+        return res.status(200).json({ text });
+
+      } catch (err) {
+        if (attempt < MAX_RETRIES) {
+          await sleep(RETRY_DELAY_MS);
+          continue;
+        }
+        break;
       }
-
-      const text = data.candidates?.[0]?.content?.parts?.[0]?.text || '';
-      return res.status(200).json({ text, model }); // retorna qual modelo foi usado
-
-    } catch (err) {
-      lastError = err.message;
-      continue;
     }
   }
 
-  // Todos os modelos falharam
   return res.status(503).json({
-    error: 'Todos os modelos estão sobrecarregados no momento. Tente novamente em alguns instantes.'
+    error: 'Serviço temporariamente indisponível. Aguarde alguns segundos e tente novamente.'
   });
 }
